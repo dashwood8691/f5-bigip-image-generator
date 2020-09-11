@@ -262,7 +262,7 @@ function check_eula_src {
 # If the iso is a URL then downloads the iso file and assigns
 # a proper BIGIP iso name and returns the new iso file path.
 function check_iso_src {
-    local iso="$1" 
+    local iso="$1"
     local ehf_flag="$2"
     local store_dir="$3"
     local out_file="$4"
@@ -289,7 +289,7 @@ function check_iso_src {
     if is_file_path_valid_url "$iso"; then
         log_info "$iso is a valid URL"
         # Create a temporary directory to download the iso to
-                
+
         tmp_iso="downloaded.iso"
         tmp_iso_path="$store_dir/$tmp_iso"
 
@@ -333,7 +333,7 @@ function check_iso_src {
 
 
 function check_iso_sig_src {
-    local iso_sig="$1" 
+    local iso_sig="$1"
     local out_file="$2"
     local save_to_loc="$3"
 
@@ -466,7 +466,7 @@ function compose_cloud_image_name {
 }
 
 
-# compose and printout bundle file extension 
+# compose and printout bundle file extension
 function get_disk_extension {
     local platform="$1"
     if [[ -z "$platform" ]]; then
@@ -822,8 +822,16 @@ function check_version_file {
         if [[ "$full_iso_product_version" != "$PRODUCT_VERSION" ]]; then
             error_and_exit "Product versions of full and EHF ISOs do not match: $full_iso_product_version vs $PRODUCT_VERSION"
         fi
-        if [[ "$full_iso_product_build" != "$PRODUCT_BASE_BUILD" ]]; then
-            error_and_exit "Product build of full ISO and product base build of EHF ISO do not match: $full_iso_product_build vs $PRODUCT_BASE_BUILD"
+        if [[ "$PRODUCT_NAME" == "BIGIP" ]]; then
+            if [[ "$full_iso_product_build" != "$PRODUCT_BASE_BUILD" ]]; then
+                error_and_exit "Product build of full ISO and product base build of EHF ISO do not match: $full_iso_product_build vs $PRODUCT_BASE_BUILD"
+            fi
+        elif [[ "$PRODUCT_NAME" == "BIGIQ" ]]; then
+            full_iso_product_name_last=$(echo "$full_iso_product_build" | awk -F "." '{print $3}')
+            product_base_build_first=$(echo "$PRODUCT_BASE_BUILD" | awk -F "." '{print $1}')
+            if [[ "$full_iso_product_name_last" != "$product_base_build_first" ]]; then
+                error_and_exit "Product build of full ISO and product base build of EHF ISO do not match: $full_iso_product_name_last vs $product_base_build_first"
+            fi
         fi
     fi
 }
@@ -849,19 +857,28 @@ function extract_ve_info_file_from_iso {
         local script_dir
         script_dir="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"
 
-        if [[ $BIGIP_VERSION_NUMBER -ge 13010002 ]] && 
-                [[ $BIGIP_VERSION_NUMBER -lt 14010000 ]] ; then
-            log_debug "Using legacy ve.info.json compatible with version '$PRODUCT_VERSION'."
-            # Use the compatible ve.info.json for 13.1.0.2 <= version < 14.1.0
-            cp -v "${script_dir}/../../resource/ve_info/13.1.0.2-ve.info.json" \
-                "$artifacts_directory/$ve_info_json"
-        elif [[ $BIGIP_VERSION_NUMBER -ge 14010000 ]]; then
-            log_debug "Using legacy ve.info.json compatible with version '$PRODUCT_VERSION'."
-            # Use the compatible ve.info.json for version >= 14.1.0
-            cp -v "${script_dir}/../../resource/ve_info/14.1.0-ve.info.json" \
-                "$artifacts_directory/$ve_info_json"
-        else
-            error_and_exit "Unsupported BIG-IP version '$BIGIP_VERSION_NUMBER'."
+        if [[ "$PRODUCT_NAME" == "BIGIP" ]]; then
+            if [[ $BIGIP_VERSION_NUMBER -ge 13010002 ]] &&
+                    [[ $BIGIP_VERSION_NUMBER -lt 14010000 ]] ; then
+                log_debug "Using legacy ve.info.json compatible with version '$PRODUCT_VERSION'."
+                # Use the compatible ve.info.json for 13.1.0.2 <= version < 14.1.0
+                cp -v "${script_dir}/../../resource/ve_info/13.1.0.2-ve.info.json" \
+                    "$artifacts_directory/$ve_info_json"
+            elif [[ $BIGIP_VERSION_NUMBER -ge 14010000 ]]; then
+                log_debug "Using legacy ve.info.json compatible with version '$PRODUCT_VERSION'."
+                # Use the compatible ve.info.json for version >= 14.1.0
+                cp -v "${script_dir}/../../resource/ve_info/14.1.0-ve.info.json" \
+                    "$artifacts_directory/$ve_info_json"
+            else
+                error_and_exit "Unsupported BIG-IP version '$BIGIP_VERSION_NUMBER'."
+            fi
+        elif [[ "$PRODUCT_NAME" == "BIGIQ" ]]; then
+            if [[ $BIGIP_VERSION_NUMBER -ge 06000000 ]]; then
+                log_debug "Using legacy ve.info.json compatible with version '$PRODUCT_VERSION'."
+                # Use the compatible ve.info.json for version >= 14.1.0
+                cp -v "${script_dir}/../../resource/ve_info/14.1.0-ve.info.json" \
+                    "$artifacts_directory/$ve_info_json"
+            fi
         fi
     fi
     if [[ ! -s "$artifacts_directory/$ve_info_json" ]]; then
@@ -904,7 +921,7 @@ function get_release_version_number {
 
     local version_string
     version_string=$(jq -r '.version_version' "$version_file")
-    if [[ -z "$version_string" ]]; then 
+    if [[ -z "$version_string" ]]; then
         log_error "Failed to read .version_version from '$version_file'"
         return 1
     fi
@@ -922,7 +939,7 @@ function get_release_version_number {
     # padding two 0s.
     local i
     for ((i = 0 ; i < num_of_elements ; i++));
-    do  
+    do
         temp=$(printf "%02d" "${ret_array[$i]}")
         rel_version="${rel_version}${temp}"
     done
@@ -949,10 +966,19 @@ function validate_iso_version {
             floor_release=13010002
             ;;
     esac
+    local floor_release_bigiq
+    floor_release_bigiq=06000000
 
-    if [[ $BIGIP_VERSION_NUMBER -lt $floor_release ]]; then
-        error_and_exit "Platform '$platform' is supported starting release $floor_release," \
-            "but iso version is $BIGIP_VERSION_NUMBER."
+    if [[ "$PRODUCT_NAME" == "BIGIP" ]]; then
+        if [[ $BIGIP_VERSION_NUMBER -lt $floor_release ]]; then
+            error_and_exit "Platform '$platform' is supported starting release $floor_release," \
+                "but iso version is $BIGIP_VERSION_NUMBER."
+        fi
+    elif [[ "$PRODUCT_NAME" == "BIGIQ" ]]; then
+        if [[ $BIGIP_VERSION_NUMBER -lt $floor_release_bigiq ]]; then
+            error_and_exit "Platform '$platform' is supported starting release $floor_release_bigiq," \
+                "but iso version is $BIGIP_VERSION_NUMBER."
+        fi
     fi
 }
 
@@ -1005,7 +1031,7 @@ function create_disk_name {
 	if [[ "$plat" == "vmware" ]]; then
             if [[ "$image_name" != "*ova" ]]; then
                 image_name="${image_name}.ova"
-	    fi 
+	    fi
 	    echo "$image_name"
             return
 	fi
@@ -1084,7 +1110,7 @@ function check_kvm_support {
 }
 
 
-# Encapsulates the steps for virtual disk generation 
+# Encapsulates the steps for virtual disk generation
 #
 function produce_virtual_disk {
     local platform="$1"
@@ -1153,7 +1179,7 @@ function produce_virtual_disk {
 # Verifies that there is enough disk space to complete the run
 function verify_disk_space {
     local min_free_disk_storage_MB
-    min_free_disk_storage_MB="$(get_config_value "MIN_FREE_DISK_STORAGE_MB")" 
+    min_free_disk_storage_MB="$(get_config_value "MIN_FREE_DISK_STORAGE_MB")"
     local space_remaining
     space_remaining=$(df -B M ./ | awk '{ print $4 }' | sed -n '2 p')
 

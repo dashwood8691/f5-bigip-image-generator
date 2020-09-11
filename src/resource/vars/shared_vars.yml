@@ -19,7 +19,7 @@ ADD_OVA_EULA:
 
 ARTIFACTS_DIR:
   description: >-
-    Enter a directory (either absolute or relative path) where newly created 
+    Enter a directory (either absolute or relative path) where newly created
     artifacts will reside. If blank, the tool will auto-create this directory.
 
 CLOUD:
@@ -31,8 +31,8 @@ CLOUD:
 
 CLOUD_IMAGE_NAME:
   description: >-
-    The name of the generated cloud image.  The name is subject to cloud provider naming restrictions 
-    and is not guaranteed to succeed.  If you provide no name, then one is generated automatically 
+    The name of the generated cloud image.  The name is subject to cloud provider naming restrictions
+    and is not guaranteed to succeed.  If you provide no name, then one is generated automatically
     based on the detected properties of the source ISO file.
 
 CONFIG_FILE:
@@ -45,15 +45,15 @@ CONSOLE_PROGRESS_BAR_UPDATE_DELAY:
   accepted: "^[0-9]+$"
   default: 5
   description: >-
-    Sleep duration (in seconds) between the retries for progress-bar updater on console. 
-    This value is used for disk generation tasks. Consult the platform-specific config 
+    Sleep duration (in seconds) between the retries for progress-bar updater on console.
+    This value is used for disk generation tasks. Consult the platform-specific config
     files for task-specific retries and delays during cloud image generation.
   internal: true
 
 DEFAULT_SIG_FILE_EXTENSION:
   default: ".384.sig"
   description: >-
-    If ISO_SIG or EHF_ISO_SIG are unset, then the tool searches for a file with 
+    If ISO_SIG or EHF_ISO_SIG are unset, then the tool searches for a file with
     this extension in the same directory as the provided ISO or EHF_ISO.
   internal: true
 
@@ -253,7 +253,7 @@ VERSION:
   parameters: 0
 
 VERSION_NUMBER:
-  default: 1.8
+  default: 1.81
   description: >-
     This is the current version of BIG-IP Image Generator.
   internal: true
